@@ -12,26 +12,19 @@ definition:
         - "context:goal"
       toolset:
         - read_file
-        - read_files
         - find_files
         - grep
-        - list_repository_tree
-        - gitlab_blob_search
+        - list_dir
         - run_command
         - get_project
         - get_merge_request
         - list_commits
         - list_issues
         - gitlab_issue_search
-        - list_merge_request_diffs
-        - get_pipeline_failing_jobs
-        - gitlab_api_get
-        - gitlab_graphql
         - create_merge_request_note
         - create_issue
         - create_issue_note
         - update_issue
-        - gitlab__user_search
       ui_log_events:
         - on_agent_final_answer
         - on_tool_execution_success
@@ -56,7 +49,7 @@ definition:
 
           Practical guidance:
           - Use repository read/search tools to identify debt candidates.
-          - Use GitLab project/MR/issue/pipeline tools (or gitlab_api_get) for measured activity.
+          - Use GitLab project/MR/issue tools for measured activity.
           - Use run_command only when needed (for lightweight calculations/formatting), not for broad repo edits.
           - Create an issue only when impact is meaningfully high or ROI is strong.
         user: |
