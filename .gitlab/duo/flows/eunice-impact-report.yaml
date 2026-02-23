@@ -1,0 +1,221 @@
+name: eunice-impact-report
+description: monthly technical debt impact report showing progress and roi
+
+components:
+  - name: gather_data
+    type: AgentComponent
+    agent: eunice-orchestrator
+    model: claude-opus-4-6
+    prompt: |
+      gather data for monthly impact report.
+      
+      project: ${CI_PROJECT_ID}
+      
+      ## your task
+      
+      query gitlab api for all eunice activity in past 30 days:
+      
+      ```python
+      from eunice.gitlab_client import EuniceGitLabClient
+      import os
+      from datetime import datetime, timedelta
+      
+      client = EuniceGitLabClient(
+          url=os.getenv('GITLAB_URL'),
+          token=os.getenv('GITLAB_TOKEN')
+      )
+      
+      project_id = os.getenv('CI_PROJECT_ID')
+      project = client.gl.projects.get(project_id)
+      
+      # get all eunice issues from past 30 days
+      since = datetime.now() - timedelta(days=30)
+      eunice_issues = project.issues.list(
+          labels=['eunice-debt'],
+          updated_after=since.isoformat(),
+          all=True
+      )
+      
+      # categorize by status
+      closed_issues = [i for i in eunice_issues if i.state == 'closed']
+      open_issues = [i for i in eunice_issues if i.state == 'opened']
+      
+      # extract metrics from issue descriptions
+      # (annual cost, effort hours saved)
+      ```
+      
+      ## output format
+      
+      ```json
+      {
+        "period": "2025-01-01 to 2025-01-31",
+        "issues_created": 15,
+        "issues_closed": 8,
+        "issues_open": 7,
+        "closed_issues_data": [
+          {
+            "issue_id": 123,
+            "file": "auth.py",
+            "annual_cost_saved": 9440,
+            "effort_hours": 6,
+            "closed_by": "developer1"
+          }
+        ]
+      }
+      ```
+  
+  - name: calculate_metrics
+    type: AgentComponent
+    agent: eunice-impact-analyzer
+    model: claude-opus-4-6
+    prompt: |
+      calculate monthly impact metrics.
+      
+      gathered data: ${gather_data.output}
+      
+      ## your task
+      
+      aggregate all closed eunice issues:
+      
+      1. **total debt paid down**: sum of annual_cost_saved
+      2. **developer hours recovered**: sum of annual hours
+      3. **velocity improvement**: compare to previous month
+      4. **carbon reduction**: calculate from ci/cd improvements
+      5. **top contributors**: who closed most issues
+      6. **roi achieved**: total savings / total effort
+      
+      ## output format
+      
+      ```json
+      {
+        "monthly_metrics": {
+          "debt_paid_usd": 47200,
+          "hours_recovered_annually": 620,
+          "effort_invested_hours": 34,
+          "actual_roi": 23,
+          "carbon_reduced_kg": 145
+        },
+        "top_contributors": [
+          {"developer": "alice", "issues_closed": 3, "savings": 15000},
+          {"developer": "bob", "issues_closed": 2, "savings": 12000}
+        ],
+        "trends": {
+          "vs_last_month": "+15%",
+          "velocity_change": "+8%"
+        }
+      }
+      ```
+  
+  - name: create_report
+    type: AgentComponent
+    agent: eunice-orchestrator
+    model: claude-opus-4-6
+    prompt: |
+      create monthly impact report.
+      
+      data: ${gather_data.output}
+      metrics: ${calculate_metrics.output}
+      
+      ## your task
+      
+      create comprehensive monthly report issue:
+      
+      ```markdown
+      # 📈 eunice monthly impact report - {month year}
+      
+      ## executive summary
+      
+      ### key wins
+      - 💰 **debt paid down**: ${total_savings}
+      - ⏱️ **hours recovered**: {hours} annually
+      - 🎯 **roi achieved**: {multiplier}x
+      - 🌱 **carbon reduced**: {kg} kg co2
+      
+      ### at a glance
+      - issues closed: {count}
+      - average fix time: {hours} hrs
+      - team velocity: +{percent}%
+      
+      ## detailed metrics
+      
+      ### financial impact
+      | metric | this month | vs last month |
+      |--------|-----------|---------------|
+      | debt paid | ${amount} | +{percent}% |
+      | effort invested | {hours} hrs | +{percent}% |
+      | roi | {multiplier}x | +{percent} pts |
+      
+      ### velocity improvement
+      - feature delivery speed: +{percent}%
+      - ci/cd runtime: -{percent}%
+      - code review time: -{percent}%
+      
+      ### sustainability
+      - compute minutes saved: {minutes}
+      - energy saved: {kwh} kwh
+      - co2 reduction: {kg} kg
+      
+      ## top wins this month
+      
+      ### 1. {file} - ${savings}
+      **closed by**: @{developer}  
+      **effort**: {hours} hrs  
+      **impact**: {description}
+      
+      [repeat for top 5]
+      
+      ## top contributors 🏆
+      
+      1. @{developer} - {count} issues, ${savings}
+      2. @{developer} - {count} issues, ${savings}
+      3. @{developer} - {count} issues, ${savings}
+      
+      ## areas for improvement
+      
+      - {open_issue_count} high-priority items still open
+      - {file} has been flagged 3 times (needs attention)
+      - consider increasing refactoring time allocation
+      
+      ## next month goals
+      
+      - [ ] close remaining high-priority items
+      - [ ] reduce review time by 10%
+      - [ ] achieve ${target} in debt paydown
+      
+      ---
+      
+      *data period*: {start_date} to {end_date}  
+      *generated*: {timestamp}  
+      *methodology*: [view docs](https://ebuka1017.github.io/eunice/#methodology)
+      ```
+      
+      then:
+      - add labels: eunice-report, monthly
+      - mention tech lead and engineering manager
+      - post highlights to slack (if enabled):
+        ```
+        📊 monthly eunice report is ready!
+        
+        key metrics:
+        💰 ${amount} debt paid
+        🎯 {multiplier}x roi
+        🌱 {kg}kg co2 saved
+        
+        [view full report]({report_url})
+        ```
+
+routing:
+  - from: start
+    to: gather_data
+  
+  - from: gather_data
+    to: calculate_metrics
+  
+  - from: calculate_metrics
+    to: create_report
+  
+  - from: create_report
+    to: end
+
+triggers:
+  - schedule: "0 9 1 * *"  # first day of month at 9am

@@ -1,0 +1,169 @@
+name: eunice-weekly-audit
+description: weekly comprehensive technical debt scan using real gitlab data
+
+components:
+  - name: scan_codebase
+    type: AgentComponent
+    agent: eunice-debt-detector
+    model: claude-sonnet-4-5
+    prompt: |
+      perform comprehensive weekly technical debt scan.
+      
+      project: ${CI_PROJECT_ID}
+      
+      ## your task
+      
+      1. use nia to get repository overview:
+         - list indexed sources
+         - explore repository structure
+         - identify high-churn files
+      
+      2. scan for technical debt patterns:
+         - complexity hotspots
+         - dead code
+         - outdated dependencies
+         - test coverage gaps
+      
+      3. prioritize top 20 files by:
+         - commit churn (from gitlab api)
+         - complexity signals (from nia)
+         - bug density (linked issues)
+      
+      ## output format
+      
+      ```json
+      {
+        "scan_summary": {
+          "total_files_analyzed": 847,
+          "debt_items_found": 23,
+          "scan_date": "2025-01-15"
+        },
+        "top_files": [
+          {
+            "file": "auth.py",
+            "severity": 9,
+            "issues": ["high_complexity", "missing_tests"],
+            "commit_churn": 45
+          }
+        ]
+      }
+      ```
+  
+  - name: calculate_impact
+    type: AgentComponent
+    agent: eunice-impact-analyzer
+    model: claude-opus-4-6
+    prompt: |
+      calculate business impact for top 10 files.
+      
+      scan results: ${scan_codebase.output}
+      project: ${CI_PROJECT_ID}
+      
+      ## your task
+      
+      for top 10 files only (to save compute):
+      
+      1. use eunice-data-engine to get real gitlab metrics
+      2. calculate annual costs
+      3. estimate fix efforts
+      4. rank by roi (impact / effort)
+      
+      ## output format
+      
+      ```json
+      {
+        "analyzed_files": 10,
+        "total_annual_cost": 94400,
+        "total_fix_effort_hours": 45,
+        "aggregated_roi": 35,
+        "files": [
+          {
+            "file": "auth.py",
+            "annual_cost": 9440,
+            "effort_hours": 6,
+            "roi": 262,
+            "priority_rank": 1
+          }
+        ]
+      }
+      ```
+  
+  - name: create_report
+    type: AgentComponent
+    agent: eunice-orchestrator
+    model: claude-opus-4-6
+    prompt: |
+      create weekly audit report issue.
+      
+      scan: ${scan_codebase.output}
+      analysis: ${calculate_impact.output}
+      
+      ## your task
+      
+      create gitlab issue with this format:
+      
+      ```markdown
+      # 📊 eunice weekly audit - {date}
+      
+      ## executive summary
+      
+      - **total debt found**: ${total_cost}
+      - **fix effort**: {hours} hours
+      - **potential roi**: {multiplier}x
+      - **files analyzed**: {count}
+      
+      ## top 10 technical debt items
+      
+      ### 1. {file} - ${annual_cost}
+      **priority score**: {score}/10  
+      **effort**: {hours} hrs  
+      **roi**: {multiplier}x
+      
+      **measured from gitlab**:
+      - {metric}: {value}
+      
+      **recommended fix**:
+      - {step 1}
+      
+      ---
+      
+      [repeat for top 10]
+      
+      ## weekly trends
+      
+      - new debt added: {count} items
+      - debt resolved: {count} items
+      - net change: {delta}
+      
+      ## next actions
+      
+      1. review top 3 items in team meeting
+      2. assign fixes based on capacity
+      3. track progress in next week's audit
+      
+      ---
+      
+      *automated by eunice*  
+      *[edit assumptions](eunice.yml) | [view docs](https://ebuka1017.github.io/eunice/#docs)*
+      ```
+      
+      then:
+      - assign to tech lead
+      - add labels: eunice-audit, weekly-report
+      - post summary to slack (if enabled)
+
+routing:
+  - from: start
+    to: scan_codebase
+  
+  - from: scan_codebase
+    to: calculate_impact
+  
+  - from: calculate_impact
+    to: create_report
+  
+  - from: create_report
+    to: end
+
+triggers:
+  - schedule: "0 9 * * 1"  # mondays at 9am

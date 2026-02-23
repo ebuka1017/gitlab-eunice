@@ -1,0 +1,59 @@
+name: "eunice-impact-report"
+description: "Monthly impact report that summarizes debt paid down, ROI, and team-level Eunice outcomes."
+public: true
+definition:
+  version: v1
+  environment: ambient
+  components:
+    - name: "gather_data"
+      type: AgentComponent
+      prompt_id: "gather_prompt"
+      inputs: ["context:goal"]
+      toolset: [run_command, get_project, list_issues, gitlab_issue_search, gitlab_api_get, gitlab_graphql]
+    - name: "calculate_metrics"
+      type: AgentComponent
+      prompt_id: "metrics_prompt"
+      inputs: ["gather_data:output", "context:goal"]
+      toolset: [run_command, gitlab_api_get, gitlab_graphql]
+    - name: "create_report"
+      type: AgentComponent
+      prompt_id: "monthly_report_prompt"
+      inputs: ["gather_data:output", "calculate_metrics:output", "context:goal"]
+      toolset: [create_issue, create_issue_note, update_issue]
+  prompts:
+    - prompt_id: "gather_prompt"
+      name: "Gather Eunice data"
+      prompt_template:
+        system: |
+          Gather last-30-day Eunice issues and project activity from GitLab. Return structured JSON with created/closed/open counts and parsed savings/effort fields.
+        user: |
+          {{goal}}
+        placeholder: history
+      unit_primitives: []
+      params: { timeout: 240 }
+    - prompt_id: "metrics_prompt"
+      name: "Calculate Eunice monthly metrics"
+      prompt_template:
+        system: |
+          Calculate monthly Eunice metrics from gathered data: debt paid down, hours recovered, effort invested, ROI, and trends. Return structured JSON.
+        user: |
+          {{context}}
+        placeholder: history
+      unit_primitives: []
+      params: { timeout: 240 }
+    - prompt_id: "monthly_report_prompt"
+      name: "Create Eunice monthly report"
+      prompt_template:
+        system: |
+          Create a monthly Eunice impact report issue with executive summary, metrics tables, contributors, and next-month goals.
+        user: |
+          {{context}}
+        placeholder: history
+      unit_primitives: []
+      params: { timeout: 180 }
+  routers:
+    - { from: "gather_data", to: "calculate_metrics" }
+    - { from: "calculate_metrics", to: "create_report" }
+    - { from: "create_report", to: "end" }
+  flow:
+    entry_point: "gather_data"

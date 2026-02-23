@@ -1,0 +1,30 @@
+# eunice agent execution configuration
+
+image: python:3.11-slim
+
+setup_commands:
+  - pip install --break-system-packages git+https://github.com/ebuka1017/eunice.git#subdirectory=eunice-data-engine
+  - pip install --break-system-packages python-gitlab pyyaml
+
+environment:
+  # gitlab connection
+  GITLAB_URL: ${CI_SERVER_URL}
+  GITLAB_TOKEN: ${CI_JOB_TOKEN}
+  GITLAB_PROJECT_ID: ${CI_PROJECT_ID}
+  GITLAB_PROJECT_PATH: ${CI_PROJECT_PATH}
+  
+  # nia connection (REQUIRED)
+  NIA_API_KEY: ${NIA_API_KEY}
+  
+  # slack (optional)
+  SLACK_BOT_TOKEN: ${SLACK_BOT_TOKEN}
+  SLACK_APP_TOKEN: ${SLACK_APP_TOKEN}
+  SLACK_TEAM_ID: ${SLACK_TEAM_ID}
+  
+  # merge request context
+  CI_MERGE_REQUEST_IID: ${CI_MERGE_REQUEST_IID}
+  CI_MERGE_REQUEST_SOURCE_BRANCH: ${CI_MERGE_REQUEST_SOURCE_BRANCH}
+
+cache:
+  paths:
+    - .eunice/cache/

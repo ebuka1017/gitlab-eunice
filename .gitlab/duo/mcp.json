@@ -1,0 +1,26 @@
+{
+  "mcpServers": {
+    "nia": {
+      "type": "http",
+      "url": "https://apigcp.trynia.ai/mcp",
+      "env": {
+        "NIA_API_KEY": "${NIA_API_KEY}"
+      },
+      "approvedTools": true,
+      "description": "nia codebase analysis - source of truth for eunice (REQUIRED)"
+    },
+    "slack": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-slack"],
+      "env": {
+        "SLACK_BOT_TOKEN": "${SLACK_BOT_TOKEN}",
+        "SLACK_APP_TOKEN": "${SLACK_APP_TOKEN}",
+        "SLACK_TEAM_ID": "${SLACK_TEAM_ID}"
+      },
+      "approvedTools": true,
+      "description": "slack integration for notifications and commands (OPTIONAL)",
+      "optional": true
+    }
+  }
+}

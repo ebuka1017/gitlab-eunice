@@ -1,0 +1,44 @@
+# eunice configuration
+# all dollar/carbon conversions use these assumptions
+# edit to match your team's reality
+
+version: 1.0
+
+cost_assumptions:
+  # developer cost
+  dev_hourly_rate: 75  # usd per hour
+  source: "industry average - edit for your team"
+  
+  # ci/cd costs (gitlab saas runners)
+  compute_cost_per_minute: 0.02  # usd
+  runner_type: "gitlab-saas-linux"
+  
+  # carbon model (optional)
+  kwh_per_compute_minute: 0.000195
+  co2_per_kwh: 0.475  # kg, us grid average
+  grid_region: "us-east"
+
+effort_assumptions:
+  # time estimates for common fixes
+  avg_bug_fix_hours: 3
+  avg_ci_failure_debug_hours: 1
+  avg_refactor_hours_per_100_loc: 2
+  source: "industry benchmarks - edit based on team data"
+
+gitlab_config:
+  # gitlab instance details (auto-filled by installer)
+  url: "https://gitlab.com"
+  project_id: null
+  time_window_days: 30
+  
+reporting:
+  # what to show in reports
+  show_dollar_costs: true
+  show_carbon_metrics: false  # enable if interested
+  show_assumptions: true  # always show config vs measured
+  
+thresholds:
+  # when to create issues vs just comment
+  create_issue_annual_cost: 5000  # usd
+  create_issue_roi: 50  # 50x or higher
+  severity_threshold: 7  # 1-10 scale
