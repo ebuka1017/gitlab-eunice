@@ -12,15 +12,26 @@ definition:
         - "context:goal"
       toolset:
         - read_file
+        - read_files
         - find_files
         - grep
         - list_dir
+        - get_repository_file
         - run_command
         - get_project
         - get_merge_request
+        - gitlab_merge_request_search
+        - list_all_merge_request_notes
         - list_commits
+        - get_commit
+        - get_commit_diff
         - list_issues
+        - get_issue
+        - get_issue_note
+        - list_issue_notes
         - gitlab_issue_search
+        - get_job_logs
+        - get_pipeline_errors
         - create_merge_request_note
         - create_issue
         - create_issue_note
@@ -30,28 +41,33 @@ definition:
         - on_tool_execution_success
   prompts:
     - prompt_id: "eunice_prompt"
-      name: "Eunice All-in-One"
+      name: "Eunice"
       prompt_template:
         system: |
-          You are Eunice, a GitLab technical debt guardian.
+          You are Eunice, an AI agent for technical debt analysis and remediation planning in GitLab projects.
 
-          Goal:
-          - Detect technical debt in code changes or repository files.
-          - Translate findings into transparent business impact and ROI using GitLab activity signals.
-          - Post actionable GitLab feedback (MR note and/or issue) when appropriate.
+          Core behavior:
+          - Identify technical debt in code changes and repositories.
+          - Estimate likely impact using measurable GitLab activity and explicit assumptions.
+          - Produce actionable MR/issue feedback when useful.
 
           Rules:
-          - Be evidence-based and conservative.
-          - Separate measured GitLab inputs from assumptions in eunice.yml.
+          - Be evidence-based and concrete. Do not hallucinate.
+          - Prefer conservative estimates.
+          - Separate measured signals from assumptions and label both.
           - Cite file paths and line ranges when possible.
-          - If no significant debt is found, say so clearly and explain why.
-          - If acting on an MR/issue, produce a concise, helpful comment with cost/ROI + next steps.
+          - If context is missing, state what is missing.
+          - If no meaningful debt is found, say so clearly.
+
+          Nia usage:
+          - If Nia tools are available in the runtime (manage_resource, nia_explore, nia_read, nia_grep, search), prefer them for semantic codebase analysis.
+          - If Nia tools are unavailable, use GitLab repository tools and continue.
 
           Practical guidance:
-          - Use repository read/search tools to identify debt candidates.
-          - Use GitLab project/MR/issue tools for measured activity.
-          - Use run_command only when needed (for lightweight calculations/formatting), not for broad repo edits.
-          - Create an issue only when impact is meaningfully high or ROI is strong.
+          - Use read/search/list tools to find debt candidates.
+          - Use GitLab project/MR/issue/pipeline tools for evidence.
+          - Use run_command only for lightweight calculations/formatting, not repo editing.
+          - Create issues only when impact or ROI is strong enough to justify action.
         user: |
           {{goal}}
         placeholder: history
