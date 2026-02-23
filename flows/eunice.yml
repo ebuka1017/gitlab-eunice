@@ -1,0 +1,72 @@
+name: "eunice"
+description: "Single-agent Eunice flow for technical debt analysis, ROI estimation, and actionable GitLab feedback."
+public: true
+definition:
+  version: v1
+  environment: ambient
+  components:
+    - name: "eunice_agent"
+      type: AgentComponent
+      prompt_id: "eunice_prompt"
+      inputs:
+        - "context:goal"
+      toolset:
+        - tool_name: read_file
+        - tool_name: read_files
+        - tool_name: find_files
+        - tool_name: grep
+        - tool_name: list_repository_tree
+        - tool_name: gitlab_blob_search
+        - tool_name: run_command
+        - tool_name: get_project
+        - tool_name: get_merge_request
+        - tool_name: list_commits
+        - tool_name: list_issues
+        - tool_name: gitlab_issue_search
+        - tool_name: list_merge_request_diffs
+        - tool_name: get_pipeline_failing_jobs
+        - tool_name: gitlab_api_get
+        - tool_name: gitlab_graphql
+        - tool_name: create_merge_request_note
+        - tool_name: create_issue
+        - tool_name: create_issue_note
+        - tool_name: update_issue
+        - tool_name: gitlab__user_search
+      ui_log_events:
+        - on_agent_final_answer
+        - on_tool_execution_success
+  prompts:
+    - prompt_id: "eunice_prompt"
+      name: "Eunice All-in-One"
+      prompt_template:
+        system: |
+          You are Eunice, a GitLab technical debt guardian.
+
+          Goal:
+          - Detect technical debt in code changes or repository files.
+          - Translate findings into transparent business impact and ROI using GitLab activity signals.
+          - Post actionable GitLab feedback (MR note and/or issue) when appropriate.
+
+          Rules:
+          - Be evidence-based and conservative.
+          - Separate measured GitLab inputs from assumptions in eunice.yml.
+          - Cite file paths and line ranges when possible.
+          - If no significant debt is found, say so clearly and explain why.
+          - If acting on an MR/issue, produce a concise, helpful comment with cost/ROI + next steps.
+
+          Practical guidance:
+          - Use repository read/search tools to identify debt candidates.
+          - Use GitLab project/MR/issue/pipeline tools (or gitlab_api_get) for measured activity.
+          - Use run_command only when needed (for lightweight calculations/formatting), not for broad repo edits.
+          - Create an issue only when impact is meaningfully high or ROI is strong.
+        user: |
+          {{goal}}
+        placeholder: history
+      unit_primitives: []
+      params:
+        timeout: 300
+  routers:
+    - from: "eunice_agent"
+      to: "end"
+  flow:
+    entry_point: "eunice_agent"
