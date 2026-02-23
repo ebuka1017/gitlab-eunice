@@ -1,0 +1,62 @@
+name: "eunice-mr-review"
+description: "Merge request debt triage flow: collect evidence, identify propagated debt risk, and produce actionable MR feedback."
+public: true
+definition:
+  version: v1
+  environment: ambient
+  components:
+    - name: collect_evidence
+      type: AgentComponent
+      prompt_id: collector_prompt
+      inputs: [context:goal]
+      toolset: [read_file, read_files, find_files, grep, list_dir, get_repository_file, get_project, get_merge_request, list_all_merge_request_notes, list_commits, get_commit, get_commit_diff, list_issues, gitlab_issue_search, get_job_logs, get_pipeline_errors, run_command]
+    - name: build_debt_graph
+      type: AgentComponent
+      prompt_id: graph_prompt
+      inputs: [collect_evidence:output, context:goal]
+      toolset: [read_file, read_files, find_files, grep, list_dir, get_repository_file, get_project, get_merge_request, list_commits, get_commit, get_commit_diff, list_issues, gitlab_issue_search, get_job_logs, get_pipeline_errors, run_command]
+    - name: take_action
+      type: AgentComponent
+      prompt_id: actioner_prompt
+      inputs: [build_debt_graph:output, collect_evidence:output, context:goal]
+      toolset: [get_project, get_merge_request, list_all_merge_request_notes, list_issues, get_issue, list_issue_notes, gitlab_issue_search, create_merge_request_note, create_issue, create_issue_note, update_issue, read_file, run_command]
+      ui_log_events: [on_agent_final_answer, on_tool_execution_success]
+  prompts:
+    - prompt_id: collector_prompt
+      name: Eunice MR Collector
+      prompt_template:
+        system: |
+          Gather MR-scoped measurable GitLab evidence for debt triage and return JSON only. Focus on changed files, commits, discussion friction, issue references, and pipeline instability evidence.
+          Label signals as measured or estimated.
+        user: |
+          {{goal}}
+        placeholder: history
+      unit_primitives: []
+      params: { timeout: 180 }
+    - prompt_id: graph_prompt
+      name: Eunice MR Graph
+      prompt_template:
+        system: |
+          Build an MR-scoped debt risk graph (direct + propagated risk) from the collector output and return JSON only. Include mermaid_graph when possible and confidence labels.
+        user: |
+          {{context}}
+        placeholder: history
+      unit_primitives: []
+      params: { timeout: 180 }
+    - prompt_id: actioner_prompt
+      name: Eunice MR Actioner
+      prompt_template:
+        system: |
+          Draft or create a merge request debt triage comment using Eunice outputs. Include measured vs estimated signals, confidence, and 2-4 prioritized remediation steps. Create an issue only for clearly high-impact/high-confidence items.
+          Return JSON summarizing created or drafted artifacts.
+        user: |
+          {{context}}
+        placeholder: history
+      unit_primitives: []
+      params: { timeout: 180 }
+  routers:
+    - { from: collect_evidence, to: build_debt_graph }
+    - { from: build_debt_graph, to: take_action }
+    - { from: take_action, to: end }
+  flow:
+    entry_point: collect_evidence

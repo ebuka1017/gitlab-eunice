@@ -1,0 +1,77 @@
+name: "eunice-weekly-triage"
+description: "Weekly debt triage flow that builds a dependency-aware debt graph and proposes a budget-aware paydown sprint."
+public: true
+definition:
+  version: v1
+  environment: ambient
+  components:
+    - name: collect_evidence
+      type: AgentComponent
+      prompt_id: collector_prompt
+      inputs: [context:goal]
+      toolset: [read_file, read_files, find_files, grep, list_dir, get_repository_file, get_project, gitlab_merge_request_search, list_commits, get_commit, list_issues, get_issue, gitlab_issue_search, get_job_logs, get_pipeline_errors, run_command]
+    - name: build_debt_graph
+      type: AgentComponent
+      prompt_id: graph_prompt
+      inputs: [collect_evidence:output, context:goal]
+      toolset: [read_file, read_files, find_files, grep, list_dir, get_repository_file, get_project, list_commits, get_commit, get_commit_diff, list_issues, gitlab_issue_search, get_job_logs, get_pipeline_errors, run_command]
+    - name: plan_paydown
+      type: AgentComponent
+      prompt_id: planner_prompt
+      inputs: [build_debt_graph:output, collect_evidence:output, context:goal]
+      toolset: [read_file, read_files, list_dir, get_project, list_commits, list_issues, gitlab_issue_search, run_command]
+    - name: take_action
+      type: AgentComponent
+      prompt_id: actioner_prompt
+      inputs: [plan_paydown:output, build_debt_graph:output, collect_evidence:output, context:goal]
+      toolset: [get_project, list_issues, get_issue, list_issue_notes, gitlab_issue_search, create_issue, create_issue_note, update_issue, read_file, run_command]
+      ui_log_events: [on_agent_final_answer, on_tool_execution_success]
+  prompts:
+    - prompt_id: collector_prompt
+      name: Eunice Weekly Collector
+      prompt_template:
+        system: |
+          Gather repo-wide weekly debt evidence from GitLab and return JSON only. Focus on churn hotspots, recurring bug/issue signals, and CI instability patterns.
+          Label measured vs estimated values.
+        user: |
+          {{goal}}
+        placeholder: history
+      unit_primitives: []
+      params: { timeout: 240 }
+    - prompt_id: graph_prompt
+      name: Eunice Weekly Graph
+      prompt_template:
+        system: |
+          Build a repository debt graph with direct and propagated risk, identify debt root nodes, and return JSON only. Include a Mermaid graph when evidence supports it.
+        user: |
+          {{context}}
+        placeholder: history
+      unit_primitives: []
+      params: { timeout: 240 }
+    - prompt_id: planner_prompt
+      name: Eunice Weekly Planner
+      prompt_template:
+        system: |
+          Produce a weekly debt paydown sprint plan and backlog prioritization from Eunice graph outputs. Respect debt budget assumptions and include defer decisions. Return JSON only.
+        user: |
+          {{context}}
+        placeholder: history
+      unit_primitives: []
+      params: { timeout: 240 }
+    - prompt_id: actioner_prompt
+      name: Eunice Weekly Actioner
+      prompt_template:
+        system: |
+          Create or draft a GitLab issue for the weekly Eunice debt triage report. Include the sprint plan, root nodes, propagated risk rationale, and a Mermaid graph if provided. Return JSON summarizing actions.
+        user: |
+          {{context}}
+        placeholder: history
+      unit_primitives: []
+      params: { timeout: 180 }
+  routers:
+    - { from: collect_evidence, to: build_debt_graph }
+    - { from: build_debt_graph, to: plan_paydown }
+    - { from: plan_paydown, to: take_action }
+    - { from: take_action, to: end }
+  flow:
+    entry_point: collect_evidence
