@@ -1,68 +1,72 @@
-name: "eunice-mr-review"
-description: "Analyze merge request changes for technical debt, compute cost/ROI, and post actionable GitLab feedback."
+name: "eunice"
+description: "Single-agent Eunice flow for technical debt analysis, ROI estimation, and actionable GitLab feedback."
 public: true
 definition:
   version: v1
   environment: ambient
   components:
-    - name: "detect_debt"
+    - name: "eunice_agent"
       type: AgentComponent
-      prompt_id: "debt_detector"
-      inputs: ["context:goal"]
-      toolset: [read_file, read_files, find_files, grep, list_repository_tree, gitlab_blob_search]
-      ui_log_events: [on_agent_final_answer, on_tool_execution_success]
-    - name: "analyze_impact"
-      type: AgentComponent
-      prompt_id: "impact_analyzer"
-      inputs: ["detect_debt:output", "context:goal"]
-      toolset: [run_command, read_file, get_project, get_merge_request, list_commits, list_issues, gitlab_issue_search, list_merge_request_diffs, get_pipeline_failing_jobs, gitlab_api_get]
-      ui_log_events: [on_agent_final_answer, on_tool_execution_success]
-    - name: "post_feedback"
-      type: AgentComponent
-      prompt_id: "orchestrator"
-      inputs: ["detect_debt:output", "analyze_impact:output", "context:goal"]
-      toolset: [get_merge_request, create_merge_request_note, create_issue, create_issue_note, update_issue, gitlab__user_search]
-      ui_log_events: [on_agent_final_answer, on_tool_execution_success]
+      prompt_id: "eunice_prompt"
+      inputs:
+        - "context:goal"
+      toolset:
+        - tool_name: read_file
+        - tool_name: read_files
+        - tool_name: find_files
+        - tool_name: grep
+        - tool_name: list_repository_tree
+        - tool_name: gitlab_blob_search
+        - tool_name: run_command
+        - tool_name: get_project
+        - tool_name: get_merge_request
+        - tool_name: list_commits
+        - tool_name: list_issues
+        - tool_name: gitlab_issue_search
+        - tool_name: list_merge_request_diffs
+        - tool_name: get_pipeline_failing_jobs
+        - tool_name: gitlab_api_get
+        - tool_name: gitlab_graphql
+        - tool_name: create_merge_request_note
+        - tool_name: create_issue
+        - tool_name: create_issue_note
+        - tool_name: update_issue
+        - tool_name: gitlab__user_search
+      ui_log_events:
+        - on_agent_final_answer
+        - on_tool_execution_success
   prompts:
-    - prompt_id: "debt_detector"
-      name: "Eunice Debt Detector"
+    - prompt_id: "eunice_prompt"
+      name: "Eunice All-in-One"
       prompt_template:
         system: |
-          You are eunice-debt-detector. Analyze merge request code changes for technical debt and return structured JSON findings with evidence and line numbers. Prefer Nia data if available; otherwise use GitLab repository read/search tools. Never hallucinate.
+          You are Eunice, a GitLab technical debt guardian.
+
+          Goal:
+          - Detect technical debt in code changes or repository files.
+          - Translate findings into transparent business impact and ROI using GitLab activity signals.
+          - Post actionable GitLab feedback (MR note and/or issue) when appropriate.
+
+          Rules:
+          - Be evidence-based and conservative.
+          - Separate measured GitLab inputs from assumptions in eunice.yml.
+          - Cite file paths and line ranges when possible.
+          - If no significant debt is found, say so clearly and explain why.
+          - If acting on an MR/issue, produce a concise, helpful comment with cost/ROI + next steps.
+
+          Practical guidance:
+          - Use repository read/search tools to identify debt candidates.
+          - Use GitLab project/MR/issue/pipeline tools (or gitlab_api_get) for measured activity.
+          - Use run_command only when needed (for lightweight calculations/formatting), not for broad repo edits.
+          - Create an issue only when impact is meaningfully high or ROI is strong.
         user: |
           {{goal}}
         placeholder: history
       unit_primitives: []
-      params: { timeout: 180 }
-    - prompt_id: "impact_analyzer"
-      name: "Eunice Impact Analyzer"
-      prompt_template:
-        system: |
-          You are eunice-impact-analyzer. Convert technical debt findings into transparent cost and ROI analysis using GitLab metrics and Eunice formulas. Separate measured inputs from configured assumptions in eunice.yml. Prefer conservative estimates.
-        user: |
-          Goal: {{goal}}
-
-          Debt findings JSON:
-          {{context}}
-        placeholder: history
-      unit_primitives: []
-      params: { timeout: 240 }
-    - prompt_id: "orchestrator"
-      name: "Eunice Orchestrator"
-      prompt_template:
-        system: |
-          You are eunice-orchestrator. Turn Eunice findings into actionable GitLab output: post a merge request comment with transparent metrics and, when thresholds are met, create/update a GitLab issue with labels/assignee.
-        user: |
-          Goal: {{goal}}
-
-          Previous component outputs:
-          {{context}}
-        placeholder: history
-      unit_primitives: []
-      params: { timeout: 180 }
+      params:
+        timeout: 300
   routers:
-    - { from: "detect_debt", to: "analyze_impact" }
-    - { from: "analyze_impact", to: "post_feedback" }
-    - { from: "post_feedback", to: "end" }
+    - from: "eunice_agent"
+      to: "end"
   flow:
-    entry_point: "detect_debt"
+    entry_point: "eunice_agent"
