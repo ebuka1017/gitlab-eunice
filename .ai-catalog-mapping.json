@@ -1,0 +1,45 @@
+{
+  "schema_version": "1.0",
+  "agents": {
+    "agents/eunice.yml": {
+      "catalog_id": "gid://gitlab/Ai::Catalog::Item/1003779",
+      "name": "eunice",
+      "created_at": "2026-02-23T22:52:25.678Z",
+      "item_consumers": {
+        "group": {
+          "id": "gid://gitlab/Ai::Catalog::ItemConsumer/4375029"
+        },
+        "project": {
+          "id": "gid://gitlab/Ai::Catalog::ItemConsumer/4375030"
+        }
+      },
+      "latest_sync": {
+        "git_tag": "v0.1.0",
+        "catalog_version": "1.0.0",
+        "synced_at": "2026-02-23T22:52:25.678Z",
+        "definition_hash": "880d48393e060440"
+      }
+    }
+  },
+  "flows": {
+    "flows/eunice.yml": {
+      "catalog_id": "gid://gitlab/Ai::Catalog::Item/1003780",
+      "name": "eunice",
+      "created_at": "2026-02-23T22:52:26.969Z",
+      "item_consumers": {
+        "group": {
+          "id": "gid://gitlab/Ai::Catalog::ItemConsumer/4375031"
+        },
+        "project": {
+          "id": "gid://gitlab/Ai::Catalog::ItemConsumer/4375032"
+        }
+      },
+      "latest_sync": {
+        "git_tag": "v0.1.0",
+        "catalog_version": "1.0.0",
+        "synced_at": "2026-02-23T22:52:26.969Z",
+        "definition_hash": "f919816450f4feef"
+      }
+    }
+  }
+}
