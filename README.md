@@ -42,7 +42,7 @@ curl -fsSL https://raw.githubusercontent.com/ebuka1017/eunice/main/install.sh | 
 **what this does:**
 1. installs eunice data engine (python package)
 2. creates `.gitlab/duo/` workflows
-3. sets up nia integration (required)
+3. sets up nia integration (recommended)
 4. creates `eunice.yml` config file
 5. optionally configures slack
 
@@ -60,7 +60,7 @@ cd your-gitlab-project
 curl -fsSL https://raw.githubusercontent.com/ebuka1017/eunice/main/install.sh | bash
 ```
 
-### 2. add nia api key to gitlab
+### 2. (recommended) add nia api key to gitlab
 ```
 settings → ci/cd → variables
 add: NIA_API_KEY = your-key-here
@@ -205,9 +205,9 @@ detailed guide: [slack setup](docs/slack-setup.md)
 
 ---
 
-## nia integration (required)
+## nia integration (recommended, optional)
 
-eunice uses nia as its source of truth for codebase analysis.
+eunice works without nia using GitLab repository tools, but nia is strongly recommended for better codebase understanding (semantic search, broader context, and fewer false positives).
 
 ### why nia?
 
@@ -215,7 +215,7 @@ eunice uses nia as its source of truth for codebase analysis.
 - **provides full context** (not truncated like web search)
 - **indexes your actual code** for accurate pattern matching
 
-### setup nia
+### setup nia (recommended)
 
 ```bash
 # install nia
@@ -230,6 +230,16 @@ npx nia index gitlab.com/your-org/your-repo
 ```
 
 see [nia documentation](https://trynia.ai/docs) for more.
+
+### if you skip nia
+
+eunice can still run using built-in GitLab tools, but expect:
+
+- less semantic understanding of code relationships
+- more reliance on filename/pattern heuristics
+- lower confidence in dead-code / duplication findings
+
+recommended approach: test without nia first if needed, then enable nia for higher-quality results.
 
 ---
 
