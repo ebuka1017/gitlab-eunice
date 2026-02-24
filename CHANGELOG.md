@@ -2,6 +2,10 @@
 
 All notable changes to Eunice are documented in this file.
 
+## [0.2.12] - 2026-02-24
+### Added
+- Added `CHAT.md` with a cleaned transcript record of the single-agent conversion, sync fixes, trigger debugging, and capability restoration session.
+
 ## [0.2.11] - 2026-02-24
 ### Changed
 - Added explicit capability-disclosure behavior to the single `eunice` prompt so capability questions return a concrete list (calculations, issue/MR creation, file edits, test execution, flow triggering via mention/assign, and limits).
