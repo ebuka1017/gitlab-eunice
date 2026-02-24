@@ -2,6 +2,11 @@
 
 All notable changes to Eunice are documented in this file.
 
+## [0.2.11] - 2026-02-24
+### Changed
+- Added explicit capability-disclosure behavior to the single `eunice` prompt so capability questions return a concrete list (calculations, issue/MR creation, file edits, test execution, flow triggering via mention/assign, and limits).
+- Clarified workflow-trigger capability responses to explain supported event-based triggering and common trigger misconfigurations.
+
 ## [0.2.10] - 2026-02-24
 ### Fixed
 - Resolved AI Catalog sync `422` failures when updating `agents/eunice.yml` by reducing the runtime system prompt size to a GitLab-compatible length.
