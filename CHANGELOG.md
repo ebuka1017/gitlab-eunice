@@ -2,6 +2,12 @@
 
 All notable changes to Eunice are documented in this file.
 
+## [0.2.10] - 2026-02-24
+### Fixed
+- Resolved AI Catalog sync `422` failures when updating `agents/eunice.yml` by reducing the runtime system prompt size to a GitLab-compatible length.
+- Preserved the full specialist prompts verbatim in `docs/eunice-specialist-prompts-verbatim.md` instead of embedding all of them directly in the runtime `eunice` system prompt.
+- Kept the single-agent action-first behavior (calculations, GitLab artifact creation, autofix mode) intact while restoring syncability.
+
 ## [0.2.9] - 2026-02-24
 ### Changed
 - Restored action-first behavior in the single `eunice` prompt with explicit execution policy (calculate, create GitLab artifacts, autofix when requested and safe).
