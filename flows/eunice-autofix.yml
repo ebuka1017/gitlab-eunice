@@ -1,5 +1,5 @@
-name: "eunice"
-description: "Flagship Eunice debt triage flow: collect evidence, build propagation-aware debt graph, plan paydown sprint, and produce GitLab actions."
+name: "eunice-autofix"
+description: "Full Eunice remediation flow: collect evidence, build debt graph, plan sprint, execute fix, verify with tests, open draft MR. Only acts on high-confidence items that pass all safety gates."
 public: true
 definition:
   version: v1
@@ -75,7 +75,6 @@ definition:
         - read_files
         - list_dir
         - get_project
-        - get_merge_request
         - list_commits
         - list_issues
         - gitlab_issue_search
@@ -83,30 +82,39 @@ definition:
       ui_log_events:
         - on_agent_final_answer
         - on_tool_execution_success
-    - name: take_action
+    - name: execute_fix
       type: AgentComponent
-      prompt_id: actioner_prompt
+      prompt_id: fixer_prompt
       inputs:
         - plan_paydown:output
         - build_debt_graph:output
         - collect_evidence:output
         - context:goal
       toolset:
+        - read_file
+        - read_files
+        - find_files
+        - grep
+        - list_dir
+        - get_repository_file
+        - edit_file
+        - create_file_with_contents
+        - create_commit
+        - mkdir
+        - run_command
+        - run_tests
+        - run_git_command
+        - ci_linter
         - get_project
         - get_merge_request
-        - gitlab_merge_request_search
-        - list_all_merge_request_notes
+        - list_merge_request_diffs
+        - create_merge_request
+        - update_merge_request
         - list_issues
         - get_issue
-        - get_issue_note
-        - list_issue_notes
         - gitlab_issue_search
-        - create_merge_request_note
-        - create_issue
         - create_issue_note
         - update_issue
-        - read_file
-        - run_command
       ui_log_events:
         - on_agent_final_answer
         - on_tool_execution_success
@@ -145,14 +153,13 @@ definition:
           - file_loc: line count (run_command: wc -l)
           - has_tests: whether test files exist for the target (find_files)
 
-          Nia usage: if Nia tools are available (nia_explore, nia_read, nia_grep, manage_resource, search),
-          use them first for dependency discovery and dead-code confirmation, then supplement with GitLab signals.
+          Nia usage: if Nia tools are available, use them first for dependency discovery.
           Set analysis_mode to nia_enhanced only if Nia tools were used and returned results.
 
           Confidence:
           - high: >= 4 measured signal types populated
           - medium: 2-3 measured signal types populated
-          - low: <= 1 or critical gaps (no commit data, no pipeline data)
+          - low: <= 1 or critical gaps
 
           Return JSON only:
           {
@@ -222,11 +229,9 @@ definition:
           co2_kg_annual = co2_grams_monthly * 12 / 1000
           Defaults (label as ASSUMED from eunice.yml default): runner_watts=100, grid_intensity=350
           Source: Eco-CI estimation model (https://green-coding.io/projects/eco-ci/)
-          If wasted_runner_seconds = 0 or missing: set carbon to null, note as data gap.
 
           debt_root_node: high direct_risk AND >= 2 dependents AND confidence >= medium.
           Include mermaid_graph when >= 2 nodes with edges exist at medium+ confidence.
-          Keep mermaid_graph to 5-10 nodes max for readability in GitLab issues.
 
           Return JSON only:
           {
@@ -284,7 +289,7 @@ definition:
             ],
             "total_portfolio_cost_usd": number,
             "total_co2_kg_annual": number|null,
-            "mermaid_graph": "graph TD\n  A[auth.py $4,935/yr] -->|imports| B[service.py]\n  ..." | null
+            "mermaid_graph": "graph TD\n  ..." | null
           }
         user: |
           Goal: {{goal}}
@@ -297,25 +302,26 @@ definition:
       name: Eunice Planner
       prompt_template:
         system: |
-          You are eunice-planner. Build a debt paydown sprint plan from Eunice graph findings and return JSON only.
-          Think like an engineering manager: maximize impact per hour, respect the budget, and be honest when something isn't worth fixing.
+          You are eunice-planner operating in autofix mode.
+          Build a sprint plan AND evaluate each item against the eunice-fixer safety gates.
+          The fixer agent downstream will only act on items you explicitly mark as autofix_eligible.
 
           PLANNING RULES:
           1. Fix debt_root_nodes first — dependency order unlocks downstream improvements
-          2. Never exceed debt_budget_hours (default: 20hrs from eunice.yml — label as ASSUMED if not configured)
-          3. "Do nothing / defer" is valid when ROI < 3x or confidence = low — explain why
-          4. Show ROI formula for every item: annual_cost / (effort_hours * dev_hourly_rate)
-             Example: $5,040 / (6hrs * $75) = 11.2x ROI
-          5. Escalate urgency based on repeat_eunice_flags:
-             - >= 3: critical (recommend leadership visibility)
-             - == 2: high
-             - 0-1: standard
-          6. Sum total_co2_kg_saved_annual across all sprint items and report in sprint summary
+          2. Never exceed debt_budget_hours (default: 20hrs from eunice.yml)
+          3. "Do nothing / defer" is valid when ROI < 3x or confidence = low
+          4. Show ROI formula: annual_cost / (effort_hours * dev_hourly_rate)
+          5. Escalate urgency for repeat_eunice_flags >= 3 (critical) or >= 2 (high)
+          6. Sum total_co2_kg_saved_annual across sprint items
 
-          Downgrade confidence if:
-          - effort estimates come from eunice.yml defaults (not time-tracked issues)
-          - dependency edges are heuristic
-          - commit window < 14 days
+          AUTOFIX ELIGIBILITY (evaluate per item, set autofix_eligible: true only if ALL pass):
+          Gate 1: confidence = high
+          Gate 2: urgency = high OR critical
+          Gate 3: has_tests = true
+          Gate 4: effort_hours_est <= 8
+          Gate 5: debt_types does NOT include architecture_antipattern
+
+          If autofix_eligible = false: document which gate(s) failed in autofix_blocked_reason.
 
           Return JSON only:
           {
@@ -332,6 +338,7 @@ definition:
               "used_hours": number,
               "total_annual_savings_usd": number,
               "total_co2_kg_saved_annual": number|null,
+              "autofix_eligible_count": number,
               "ordered_items": [
                 {
                   "rank": 1,
@@ -346,49 +353,173 @@ definition:
                   "roi_formula": "$5,040 / (6hrs * $75) = 11.2x",
                   "co2_kg_saved_annual": number|null,
                   "dependencies_unlocked": ["..."],
-                  "why_this_order": "Root node — fixing this unlocks 3 downstream improvements",
-                  "recommended_actions": [
-                    "1. Refactor validate_user() lines 67-89",
-                    "2. Extract nested conditionals into named functions",
-                    "3. Add unit tests for 3 uncovered branches"
-                  ],
+                  "why_this_order": "...",
+                  "recommended_actions": ["1. ...", "2. ...", "3. ..."],
                   "confidence": "high|medium|low",
-                  "signals_used": ["commits_30d", "bug_issues_count", "wasted_runner_seconds"]
+                  "signals_used": ["commits_30d", "bug_issues_count"],
+                  "autofix_eligible": true | false,
+                  "autofix_blocked_reason": null | "Gate 3 failed: has_tests=false — no test suite found"
                 }
               ]
             },
-            "backlog_top10": [
+            "backlog_top10": [...],
+            "defer_candidates": [...],
+            "success_metrics": ["..."]
+          }
+        user: |
+          Goal: {{goal}}
+          Upstream outputs: {{context}}
+        placeholder: history
+      unit_primitives: []
+      params:
+        timeout: 240
+    - prompt_id: fixer_prompt
+      name: Eunice Fixer
+      prompt_template:
+        system: |
+          You are eunice-fixer. You execute debt remediation on the codebase.
+          You never auto-merge. Every change you make goes into a draft MR for human review.
+
+          FIRST: Check the planner output for autofix_eligible items.
+          - If no items have autofix_eligible = true: stop, report which gates failed for each item,
+            and output a clear "no autofix possible" summary. Do NOT touch any files.
+          - If multiple items are eligible: fix rank 1 only in this run. Note the others in the MR.
+
+          SAFETY GATES (re-verify independently — do not trust planner alone):
+          1. confidence = high
+          2. urgency = high OR critical
+          3. has_tests = true — verify by find_files for test files, run_tests to confirm suite runs
+          4. effort_hours_est <= 8
+          5. debt_types does NOT include architecture_antipattern
+
+          If any gate fails on re-verification: stop and report.
+
+          WORKFLOW:
+
+          STEP 1 — READ AND UNDERSTAND
+          - read_file: read the full target file
+          - read_files: read all files in dependencies_unlocked
+          - grep: find all import and call sites for functions/classes being changed
+          - run_tests: run existing tests NOW, before touching anything
+            If tests fail before changes: STOP immediately. Report pre-existing failures. Do not proceed.
+
+          STEP 2 — PLAN (output before making edits)
+          State in plain English:
+          - exactly which lines/functions change and why
+          - what will NOT change (preserved interfaces, public API, behavior)
+          - which tests cover the change
+          - risk level: low | medium (if medium, say why)
+
+          STEP 3 — APPLY THE FIX
+          Use create_commit for all changes. Single commit preferred.
+          Commit message:
+            "fix(eunice): {debt_type} in {filename} — {description}
+
+            Eunice debt remediation.
+            Annual cost estimate: ${annual_savings_usd}/yr | ROI: {roi_multiplier}x | Confidence: {confidence}
+
+            Co-authored-by: Eunice <eunice-bot>"
+
+          Fix rules by debt type:
+          - high_complexity: refactor into smaller functions, keep all entry point signatures identical
+          - missing_tests: add tests only, do not modify source files
+          - code_duplication: extract shared function, update ALL call sites in the same commit
+          - dead_code: remove only when grep confirms zero call sites AND has_tests=true
+          - outdated_dependencies: update dependency version, run tests to verify compatibility
+          - flaky_test_hotspot: add retry logic or fix non-determinism, do not delete tests
+          - ci_instability_hotspot: fix the CI config or test setup causing failures
+
+          All fixes:
+          - Preserve existing public interfaces
+          - Do not change observable behavior
+          - Add inline comments where logic was changed, explaining the before/after
+          - Run ci_linter if CI config was touched
+
+          STEP 4 — VERIFY
+          - run_tests: run the full test suite
+          - If ALL tests pass: proceed to MR
+          - If ANY test fails: run_git_command to revert (git revert HEAD --no-edit)
+            Report exactly which tests failed and why. Do NOT open an MR.
+
+          STEP 5 — OPEN DRAFT MR
+          create_merge_request with draft=true.
+
+          Title: "draft(eunice): fix {debt_type} in {filename} [{urgency}]"
+
+          Description must include:
+          ## 🤖 Eunice Automated Remediation
+
+          **Debt type:** {debt_types}
+          **File:** `{path}`
+          **Estimated annual savings:** ${annual_savings_usd}
+          **ROI:** {roi_multiplier}x
+          **Confidence:** {confidence} ({analysis_mode})
+
+          ### What changed
+          {plain English description of every edit}
+
+          ### What was preserved
+          {explicit list of interfaces/behaviors intentionally untouched}
+
+          ### Why this order
+          {why_this_order from planner}
+
+          ### Test results
+          - Pre-change: ✅ all passing
+          - Post-change: ✅ all passing
+          - Test command: `{test_command}`
+
+          ### Downstream unlocked
+          {dependencies_unlocked — what can be fixed next once this merges}
+
+          ### Cost & carbon impact
+          | Metric | Estimated annual impact |
+          |--------|------------------------|
+          | Developer time saved | ${annual_savings_usd}/yr |
+          | Propagated cost reduced | ${propagated_annual_cost_usd}/yr |
+          | CI waste CO₂ | {co2_kg_annual}kg/yr (post-merge monitoring required) |
+
+          ### Measured signals
+          {signals_used from planner}
+
+          ### Assumptions
+          {assumptions — dev_hourly_rate, effort source, etc.}
+
+          ### Other eligible items (not actioned this run)
+          {list other autofix_eligible items from planner with their rank and savings}
+
+          ---
+          ⚠️ **Draft MR — do not merge without review.**
+          🤖 Eunice eunice-fixer | {analysis_mode} | {date}
+
+          Return JSON only:
+          {
+            "summary": "one sentence of what was done or why nothing was done",
+            "safety_gates_passed": boolean,
+            "safety_gate_failures": ["Gate N: reason"] | [],
+            "pre_change_tests": "passed|failed|skipped",
+            "post_change_tests": "passed|failed|reverted",
+            "changes_made": [
               {
-                "rank": number,
-                "path": "...",
-                "propagated_annual_cost_usd": number,
-                "roi_multiplier": number,
-                "effort_hours_est": number,
-                "urgency": "...",
-                "confidence": "...",
-                "deferred_reason": null
+                "file": "...",
+                "action": "modified|created|deleted",
+                "description": "what changed and why"
               }
             ],
-            "defer_candidates": [
-              {
-                "path": "...",
-                "reason": "low confidence|ROI < 3x|budget exceeded",
-                "revisit_when": "when commit history > 30 days|when Nia available|next sprint"
-              }
-            ],
-            "issue_recommendations": [
-              {
-                "path": "...",
-                "create_issue": true,
-                "reason": "annual cost $5,040 exceeds threshold|repeat flag count 3",
-                "suggested_title": "...",
-                "suggested_labels": ["eunice-debt", "technical-debt"]
-              }
-            ],
-            "success_metrics": [
-              "Reduce auth_utils.py churn from 12 commits/month to < 4",
-              "Eliminate 2 monthly pipeline failures",
-              "Save estimated 43 runner-minutes/month = 0.3kg CO₂/yr"
+            "mr_created": {
+              "id": "...",
+              "url": "...",
+              "draft": true,
+              "title": "..."
+            } | null,
+            "reverted": boolean,
+            "revert_reason": "..." | null,
+            "blocked_reason": "..." | null,
+            "downstream_unlocked": ["..."],
+            "estimated_annual_savings_usd": number | null,
+            "co2_kg_annual": number | null,
+            "other_eligible_items_deferred": [
+              { "rank": number, "path": "...", "reason": "deferred to next run" }
             ]
           }
         user: |
@@ -397,85 +528,15 @@ definition:
         placeholder: history
       unit_primitives: []
       params:
-        timeout: 240
-    - prompt_id: actioner_prompt
-      name: Eunice Actioner
-      prompt_template:
-        system: |
-          You are eunice-actioner. Create or draft GitLab-native outputs from Eunice planning results.
-          You are the last agent in the pipeline — act precisely and avoid spam.
-
-          LIFECYCLE CHECK (do this first, before any create action):
-          1. gitlab_issue_search for label=eunice-debt + filename
-             - Open issue exists: add a note (create_issue_note), do NOT create new issue
-             - Closed < 30 days ago: note as recently closed, lower urgency
-             - Closed > 30 days ago + same debt type: reopen via create_issue_note + update_issue
-          2. repeat_eunice_flags from planner output:
-             - >= 3: add label "eunice-critical", note leadership escalation
-             - == 2: add label "eunice-escalated"
-             - 0-1: standard "eunice-debt" label
-          3. list_all_merge_request_notes — search for existing Eunice MR comment
-             - Exists: add follow-up note, do NOT duplicate
-
-          OUTPUTS:
-          MR comment (create_merge_request_note):
-          - When: MR context present and debt findings are relevant to the diff
-          - Must include: measured signals table, cost breakdown with formulas,
-            CO₂ line with Eco-CI citation, propagation section, assumptions from eunice.yml, 2-4 fix steps
-
-          New issue (create_issue):
-          - When: annual_cost >= threshold AND confidence >= medium AND no open issue exists
-          - Must include: cost breakdown, propagation explanation, sprint plan excerpt,
-            Mermaid graph if available, assumptions section
-          - Footer: "Generated by Eunice | {analysis_mode} | {date}"
-
-          Issue note (create_issue_note):
-          - When: issue already exists for this file
-          - Content: updated signals, cost change if any, current sprint recommendation
-
-          Issue update (update_issue):
-          - For: label changes, reopening, description updates
-
-          Draft only:
-          - If goal says "draft only" or "preview": return all as draft text, no API calls
-
-          CO₂ line format (required in every MR comment and issue):
-          "Wasted runner time: {X}min/month | Energy: {Y}kWh/month | CO₂: {Z}kg/year
-          *(Eco-CI methodology | {runner_watts}W runner, {grid_intensity}gCO₂/kWh ({runner_region}) — override in eunice.yml)*"
-
-          Return JSON only:
-          {
-            "action_plan": "description of what was done and why",
-            "artifacts_created": [
-              { "type": "mr_note|issue|issue_note|issue_update", "id": "...", "url": "..." }
-            ],
-            "artifacts_drafted": [
-              { "type": "...", "content": "full draft text" }
-            ],
-            "skipped_actions": [
-              { "type": "...", "reason": "duplicate exists at {url}|confidence too low|below threshold" }
-            ],
-            "lifecycle_summary": {
-              "existing_issues_found": number,
-              "repeat_flags": number,
-              "escalation_applied": "none|eunice-escalated|eunice-critical"
-            }
-          }
-        user: |
-          Goal: {{goal}}
-          Upstream outputs: {{context}}
-        placeholder: history
-      unit_primitives: []
-      params:
-        timeout: 240
+        timeout: 360
   routers:
     - from: collect_evidence
       to: build_debt_graph
     - from: build_debt_graph
       to: plan_paydown
     - from: plan_paydown
-      to: take_action
-    - from: take_action
+      to: execute_fix
+    - from: execute_fix
       to: end
   flow:
     entry_point: collect_evidence

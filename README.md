@@ -32,6 +32,7 @@ Eunice answers all three questions — using real GitLab data, not guesses.
 | `eunice-graph` | Builds propagation-aware debt map with cost and CO₂ math |
 | `eunice-planner` | Turns debt graph into a budget-aware sprint plan |
 | `eunice-actioner` | Writes MR comments and issues, manages lifecycle memory |
+| `eunice-fixer` | **Executes the fix** — edits files, runs tests, opens a draft MR for human review |
 
 ### Flows
 
@@ -41,6 +42,7 @@ Eunice answers all three questions — using real GitLab data, not guesses.
 | `eunice-mr-review` | On MR open | Fast path: collector → graph → actioner |
 | `eunice-weekly-triage` | Every Monday | Repo-wide sprint plan as a GitLab issue |
 | `eunice-monthly-balance-sheet` | Monthly | Debt added vs paid down, CO₂ trend report |
+| `eunice-autofix` | On demand | **Full remediation**: triage → plan → fix → verify tests → draft MR |
 
 ---
 
@@ -172,6 +174,60 @@ Eunice tracks its own findings over time:
 
 ---
 
+## Automated remediation (eunice-autofix)
+
+Eunice doesn't just tell you what to fix — it can fix it.
+
+The `eunice-autofix` flow runs the full triage pipeline and, for items that pass all safety gates, **writes the code changes, runs your test suite, and opens a draft MR** for your team to review and merge.
+
+### Safety gates
+
+Eunice will only attempt a fix if **all five gates pass**:
+
+| Gate | Requirement | Why |
+|------|-------------|-----|
+| 1 | `confidence = high` | Only act on findings with 4+ measured signal types |
+| 2 | `urgency = high or critical` | Only act on things that materially affect the team |
+| 3 | `has_tests = true` | Tests must exist to verify the fix didn't break anything |
+| 4 | `effort_hours_est <= 8` | Only contained, scoped changes — not multi-day refactors |
+| 5 | `debt_type ≠ architecture_antipattern` | Structural changes require human design decisions |
+
+If any gate fails, the fixer stops, reports which gate failed and why, and leaves the manual sprint plan for the developer to action instead.
+
+### What the fixer does
+
+1. Reads the target file and all dependent files
+2. Runs your existing tests to confirm they pass **before touching anything**
+3. Applies the targeted fix (refactor, test addition, deduplication, etc.)
+4. Runs tests again to verify nothing broke
+5. If tests fail after the fix: **automatically reverts** and reports what failed
+6. If tests pass: opens a **draft MR** with full cost/carbon breakdown, change description, and downstream impact
+
+### What Eunice will never do
+
+- Auto-merge — every change requires human approval
+- Touch a file without a passing test suite
+- Make architectural decisions (structural refactors stay in the backlog)
+- Open an MR with failing tests
+
+### Example
+
+```
+Run eunice-autofix on src/auth/
+
+→ Collector: 5 signal types found, confidence=high
+→ Graph: auth_utils.py root node, $4,935/yr propagated cost
+→ Planner: rank 1 item passes all 5 gates — autofix_eligible=true
+→ Fixer: tests pass pre-change ✅
+         refactored validate_user() lines 67-89
+         extracted 3 nested conditionals
+         tests pass post-change ✅
+→ Draft MR !247 opened: "draft(eunice): fix high_complexity in auth_utils.py [high]"
+   Estimated savings: $4,935/yr | ROI: 13.2x | Unlocks: 3 downstream files
+```
+
+---
+
 ## Setup
 
 ### 1. Install from AI Catalog
@@ -256,13 +312,6 @@ A: It says so. "Do nothing" is a first-class output. A tool that always finds pr
 
 **Q: How does CO₂ calculation work?**
 A: Eco-CI methodology: runner duration × power draw → energy → grid carbon intensity → grams CO₂. All assumptions are labeled and overridable.
-
----
-
-## Prize categories (GitLab AI Hackathon)
-
-- ✅ **GitLab + Anthropic** — built on Claude Sonnet 4.6 via GitLab Duo Agent Platform
-- ✅ **Green Agent** — CI waste → energy → CO₂ calculation using Eco-CI methodology
 
 ---
 

@@ -152,20 +152,23 @@ definition:
 
           For each hotspot candidate:
           - Calculate direct_annual_cost using the standard formula:
-            (commits_30d * avg_mr_review_minutes/60 * 75 * 12)
-            + (bug_issues_count * 3 * 75)
-            + (failed_pipelines_30d * 1.0 * 75 * 12)
-            Label all defaults as ASSUMED.
+            (commits_30d * avg_mr_review_minutes/60 * dev_hourly_rate * 12)
+            + (bug_issues_count * avg_bug_fix_hours * dev_hourly_rate)
+            + (failed_pipelines_30d * 1.0 * dev_hourly_rate * 12)
+            Defaults (label all as ASSUMED from eunice.yml default):
+              dev_hourly_rate: 75, avg_bug_fix_hours: 3, avg_pipeline_debug_hours: 1.0
 
           - Calculate propagated_annual_cost:
             propagation_multiplier = min(1 + (dependent_count * 0.15), 4.0)
             propagated_cost = direct_cost * multiplier
-            Find dependents via grep (imports/requires) or Nia if available.
+            Find dependents via Nia (preferred) or grep (imports/requires).
+            Label heuristic edges: "confidence": "low", "method": "heuristic"
 
           - Calculate CO₂ if wasted_runner_seconds > 0:
-            energy_kwh = (wasted_runner_seconds/3600) * 0.1
-            co2_kg_annual = energy_kwh * 0.350 * 12
-            Source: Eco-CI estimation model. Label watts and grid intensity as ASSUMED.
+            energy_kwh = (wasted_runner_seconds/3600) * runner_watts / 1000
+            co2_kg_annual = energy_kwh * grid_intensity_gco2_per_kwh * 12 / 1000
+            Defaults (label as ASSUMED from eunice.yml default): runner_watts=100, grid_intensity=350
+            Source: Eco-CI estimation model (https://green-coding.io/projects/eco-ci/)
 
           - Identify debt_root_nodes (high direct_risk + >= 2 dependents + confidence >= medium)
           - Generate mermaid_graph for top 5-8 nodes if edge evidence exists
