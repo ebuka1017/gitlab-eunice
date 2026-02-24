@@ -2,6 +2,11 @@
 
 All notable changes to Eunice are documented in this file.
 
+## [0.2.8] - 2026-02-24
+### Changed
+- Removed remaining hackathon-specific project references from documentation and wiki copy.
+- Standardized repository references to product-facing wording.
+
 ## [0.2.7] - 2026-02-24
 ### Changed
 - Pruned stale deleted-agent entries from `.ai-catalog-mapping.json` so the mapping reflects the true single-agent catalog (`agents/eunice.yml` only).
@@ -33,7 +38,7 @@ All notable changes to Eunice are documented in this file.
 - Upgraded `flows/eunice.yml` and `flows/eunice-mr-review.yml` inline prompts to match standalone agent rigor.
 - Updated `flows/eunice-weekly-triage.yml` consistency around assumptions/default labeling.
 - Synced `agents/agent.yml.template` and `flows/flow.yml.template` to current Eunice architecture.
-- Refreshed `README.md` for autofix capability and product positioning (without hackathon/prize framing).
+- Refreshed `README.md` for autofix capability and product positioning (without event/prize framing).
 
 ## [0.2.2] - 2026-02-24
 ### Added
