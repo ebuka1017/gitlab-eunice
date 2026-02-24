@@ -27,18 +27,13 @@ Eunice answers all three questions — using real GitLab data, not guesses.
 
 | Agent | Role |
 |-------|------|
-| `eunice` | General-purpose debt triage (chat-friendly, single agent) |
-| `eunice-collector` | Gathers measurable GitLab signals — no estimation, no hallucination |
-| `eunice-graph` | Builds propagation-aware debt map with cost and CO₂ math |
-| `eunice-planner` | Turns debt graph into a budget-aware sprint plan |
-| `eunice-actioner` | Writes MR comments and issues, manages lifecycle memory |
-| `eunice-fixer` | **Executes the fix** — edits files, runs tests, opens a draft MR for human review |
+| `eunice` | The single product agent. Handles analysis, planning, GitLab actions, reporting, and gated autofix (draft MR only). Internally it uses staged reasoning patterns for reliability. |
 
 ### Flows
 
 | Flow | Trigger | Purpose |
 |------|---------|---------|
-| `eunice` | On demand / chat | Full debt triage: collector → graph → planner → actioner |
+| `eunice` | On demand / chat | Full debt triage and orchestration via one agent (`eunice`) |
 | `eunice-mr-review` | On MR open | Fast path: collector → graph → actioner |
 | `eunice-weekly-triage` | Every Monday | Repo-wide sprint plan as a GitLab issue |
 | `eunice-monthly-balance-sheet` | Monthly | Debt added vs paid down, CO₂ trend report |
@@ -235,6 +230,8 @@ Run eunice-autofix on src/auth/
 GitLab project → Automate → AI Catalog → search "eunice" → enable
 ```
 
+Enable the **agent** (`eunice`) and any **flows** you want to use (`eunice-mr-review`, `eunice-weekly-triage`, `eunice-monthly-balance-sheet`, `eunice-autofix`).
+
 ### 2. Add `eunice.yml` to your project root
 Copy and edit the config file:
 ```yaml
@@ -263,7 +260,17 @@ npx nia index gitlab.com/your-org/your-repo
 # Add NIA_API_KEY to GitLab CI/CD variables
 ```
 
-### 4. Schedule flows
+### 4. Trigger and schedule flows
+Custom flows are event-driven. Creating an issue or MR alone does **not** trigger a flow.
+
+Supported trigger patterns include:
+- mentioning the flow service account handle in an issue/MR comment
+- assigning the flow service account (if an `Assign` trigger is configured)
+- assign reviewer (MR-only, if configured)
+
+After triggering a flow, check:
+`Automate → Sessions`
+
 ```yaml
 # .gitlab-ci.yml
 eunice-weekly:
@@ -322,7 +329,7 @@ A: Eco-CI methodology: runner duration × power draw → energy → grid carbon 
 - **Cost/ROI quality depends on calibration.** If `eunice.yml` assumptions are unrealistic (hourly rate, fix effort, pipeline debug time), the prioritization math will be directionally useful but numerically off.
 - **Autofix is pilot-grade, not default-safe for all repos.** `eunice-autofix` should start on test-covered repos with draft-MR review only, and be limited to safer debt types before expanding scope.
 - **Tool availability varies by GitLab runtime.** Some environments may not expose the same built-in tools, which can reduce feature coverage or force more conservative fallbacks.
-- **Weak test suites limit remediation confidence.** If tests are flaky, missing, or too narrow, `eunice-fixer` may correctly refuse to proceed or produce lower-confidence outcomes.
+- **Weak test suites limit remediation confidence.** If tests are flaky, missing, or too narrow, Eunice autofix mode may correctly refuse to proceed or produce lower-confidence outcomes.
 
 ---
 

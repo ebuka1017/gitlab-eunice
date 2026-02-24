@@ -2,6 +2,14 @@
 
 All notable changes to Eunice are documented in this file.
 
+## [0.2.6] - 2026-02-24
+### Changed
+- Converted the AI Catalog to a true single-agent catalog (`agents/eunice.yml` as the public agent).
+- Consolidated the former specialist system prompts (`collector`, `graph`, `planner`, `actioner`, `fixer`) into the single `eunice` system prompt in full, preserving them verbatim in labeled sections.
+- Synced `agents/agent.yml.template` to the consolidated single-agent `eunice` prompt.
+- Updated README and Wiki architecture/setup docs to present Eunice as one agent with modes and event-driven flows.
+- Added explicit flow-trigger behavior guidance (mention/assign triggers and `Automate -> Sessions` debugging).
+
 ## [0.2.4] - 2026-02-24
 ### Changed
 - Updated changelog and GitLab Wiki to document the autofix capability, rollout guidance, and latest architecture/flows.
