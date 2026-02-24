@@ -6,6 +6,11 @@ All notable changes to Eunice are documented in this file.
 ### Changed
 - Updated changelog and GitLab Wiki to document the autofix capability, rollout guidance, and latest architecture/flows.
 
+## [0.2.5] - 2026-02-24
+### Changed
+- Added a `Known limitations` section to `README.md` to set expectations for early users.
+- Added `Known Limitations` page to the GitLab Wiki and linked it from the wiki home page.
+
 ## [0.2.3] - 2026-02-24
 ### Added
 - `agents/eunice-fixer.yml` for safe, gated automated remediation (draft MR only, test-verified).

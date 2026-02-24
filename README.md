@@ -315,6 +315,17 @@ A: Eco-CI methodology: runner duration × power draw → energy → grid carbon 
 
 ---
 
+## Known limitations
+
+- **Prompt-driven behavior can vary by repo shape.** Eunice uses strict output contracts, but unusual repo layouts or weak signals can still reduce output quality.
+- **`gitlab_only` mode is weaker than `nia_enhanced`.** Without Nia, dependency graphs and dead-code detection rely on grep/pattern heuristics and may have lower confidence.
+- **Cost/ROI quality depends on calibration.** If `eunice.yml` assumptions are unrealistic (hourly rate, fix effort, pipeline debug time), the prioritization math will be directionally useful but numerically off.
+- **Autofix is pilot-grade, not default-safe for all repos.** `eunice-autofix` should start on test-covered repos with draft-MR review only, and be limited to safer debt types before expanding scope.
+- **Tool availability varies by GitLab runtime.** Some environments may not expose the same built-in tools, which can reduce feature coverage or force more conservative fallbacks.
+- **Weak test suites limit remediation confidence.** If tests are flaky, missing, or too narrow, `eunice-fixer` may correctly refuse to proceed or produce lower-confidence outcomes.
+
+---
+
 ## License
 
 MIT — see [LICENSE](LICENSE)
