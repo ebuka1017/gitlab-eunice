@@ -1,112 +1,285 @@
 # Eunice
 
-Eunice is an AI agent system for technical debt intelligence in GitLab projects.
+**Technical debt has a real cost. Eunice calculates it, maps it, and tells you exactly what to fix first.**
 
-It is not a generic code review bot.
+Most teams know they have technical debt. Nobody knows how much it actually costs, which files are the worst offenders, or what to fix on Monday morning.
 
-Eunice focuses on:
-- debt detection and prioritization
-- impact / ROI estimation using GitLab activity signals
-- dependency-aware debt propagation ("root-node" risk)
-- sprint-sized debt paydown planning
-- actionable GitLab feedback (MR notes / issues)
-- monthly debt balance sheet reporting
+Eunice answers all three questions — using real GitLab data, not guesses.
 
-## What this repository is
+---
 
-This repository is the AI Catalog package for Eunice (agents + flows) published to GitLab AI Catalog.
+## What makes Eunice different
 
-It intentionally contains only:
-- `agents/`
-- `flows/`
-- `README.md`
-- `LICENSE`
+| Other tools | Eunice |
+|-------------|--------|
+| "This code is complex" | "$9,440/yr cost — 12 commits × 14min review × $75/hr × 12mo = $1,890 + ..." |
+| Vague suggestions | Transparent formula, every number sourced or labeled as assumed |
+| Point-in-time analysis | Monthly balance sheet: debt added, debt paid down, net trend |
+| Flat file list | Dependency-propagation graph — root nodes infect downstream files |
+| Ignores CI waste | Wasted runner minutes → energy → CO₂ (Eco-CI methodology) |
+| Always creates issues | "Do nothing" is a first-class output when ROI is weak |
 
-Runtime integrations (for example Nia MCP, project-specific CI variables, custom config files) are configured in the project where Eunice runs.
+---
 
-## Architecture (new Eunice)
+## Architecture
 
 ### Agents
 
-- `eunice` — general-purpose debt triage and remediation planning agent (chat-friendly)
-- `eunice-collector` — gathers measurable GitLab signals and produces evidence packets
-- `eunice-graph` — builds dependency-weighted debt maps and propagated risk estimates
-- `eunice-planner` — turns the debt graph into a paydown sprint and backlog recommendations
-- `eunice-actioner` — writes MR comments/issues and manages follow-up actions
+| Agent | Role |
+|-------|------|
+| `eunice` | General-purpose debt triage (chat-friendly, single agent) |
+| `eunice-collector` | Gathers measurable GitLab signals — no estimation, no hallucination |
+| `eunice-graph` | Builds propagation-aware debt map with cost and CO₂ math |
+| `eunice-planner` | Turns debt graph into a budget-aware sprint plan |
+| `eunice-actioner` | Writes MR comments and issues, manages lifecycle memory |
 
 ### Flows
 
-- `eunice` — flagship debt triage flow (collector -> graph -> planner -> actioner)
-- `eunice-mr-review` — MR-oriented fast path (collector -> graph -> actioner)
-- `eunice-weekly-triage` — backlog/sprint planning flow (full pipeline)
-- `eunice-monthly-balance-sheet` — debt paydown and trend reporting flow
+| Flow | Trigger | Purpose |
+|------|---------|---------|
+| `eunice` | On demand / chat | Full debt triage: collector → graph → planner → actioner |
+| `eunice-mr-review` | On MR open | Fast path: collector → graph → actioner |
+| `eunice-weekly-triage` | Every Monday | Repo-wide sprint plan as a GitLab issue |
+| `eunice-monthly-balance-sheet` | Monthly | Debt added vs paid down, CO₂ trend report |
 
-## Trust model (how Eunice avoids hallucinated metrics)
+---
 
-Every metric should be labeled as one of:
-- `measured` (from GitLab APIs / repository data)
-- `estimated` (derived from assumptions)
+## Trust model — how Eunice avoids hallucinated numbers
 
-Eunice should also emit:
+Every metric in every Eunice output is labeled as one of:
+
+- **`measured`** — fetched directly from GitLab APIs (commits, MR durations, issue time tracking, pipeline job durations)
+- **`estimated`** — derived from assumptions in `eunice.yml`
+
+Every output also includes:
 - `analysis_mode`: `nia_enhanced` or `gitlab_only`
 - `confidence`: `high`, `medium`, or `low`
-- explicit assumptions used for ROI / cost calculations
+- `assumptions`: explicit list of every default used, with its source
 
-## Nia setup (recommended, optional)
+If Eunice doesn't have enough data, it says so and reports a data gap rather than fabricating a number.
 
-Eunice is designed to be Nia-first when Nia is available in the runtime.
+---
 
-### Why use Nia
+## Cost calculation
 
-Nia improves:
-- semantic codebase understanding
-- dependency and reference discovery quality
-- confidence in dead-code / duplication findings
-- debt propagation analysis quality
+```
+annual_dev_cost =
+  (commits_30d × avg_mr_review_min/60 × dev_hourly_rate × 12)   ← MEASURED × ASSUMED
+  + (bug_issues_count × avg_bug_fix_hours × dev_hourly_rate)     ← MEASURED × ASSUMED
+  + (failed_pipelines_30d × 1.0hr × dev_hourly_rate × 12)       ← MEASURED × ASSUMED
+```
 
-### What happens if you skip Nia
+All `dev_hourly_rate` and effort defaults come from `eunice.yml` — your config, your numbers.
 
-Eunice still works using GitLab built-in repository tools, but:
-- dependency and relationship inference is weaker
-- findings rely more on path/pattern heuristics
-- confidence should be lower on structural conclusions
+---
 
-### Important catalog limitation
+## Dependency propagation
 
-This AI Catalog repository uses GitLab's catalog YAML validation, which only accepts built-in tool IDs in `agents/*.yml` and `flows/*.yml`.
+A file's true cost isn't just its own signals. If 9 other files import it, fixing it fixes all of them.
 
-That means Nia tools (`manage_resource`, `nia_explore`, `nia_read`, `nia_grep`, `search`) cannot be declared in the catalog YAML tool lists even if you use Nia at runtime.
+```
+propagated_cost = direct_cost × propagation_multiplier
+propagation_multiplier = min(1 + (dependent_count × 0.15), 4.0)
+```
 
-The correct model is:
-- catalog YAML: validator-safe built-in GitLab tools
-- runtime project: Nia tools available via MCP/runtime integration
-- prompts: prefer Nia when available, fallback to GitLab tools when unavailable
+**Example:**
+> `auth_utils.py` direct cost: **$2,100/yr**
+> Dependents: **9 files**
+> Propagation multiplier: **2.35×**
+> **True organizational cost: $4,935/yr**
+> Fix this first. Unlocks improvements in 4 downstream files automatically.
 
-## Setup (catalog publishing)
+---
 
-1. Validate agent/flow YAML via pipeline.
-2. Push a tag (for example `v0.1.0`) to publish/update catalog items.
-3. Enable the agent/flows in your GitLab group/project.
-4. Test in Duo Chat and MR/issue contexts.
+## CO₂ / CI waste calculation
 
-## Setup (runtime project)
+Wasted CI minutes are both a cost problem and a carbon problem.
 
-In the project where Eunice actually runs:
-- expose GitLab tools in the agent runtime (built-in)
-- optionally expose Nia tools (recommended)
-- add any org assumptions/config needed for ROI and sprint planning
-- run Eunice in MR / issue / scheduled contexts
+```
+energy_kwh       = (wasted_runner_seconds / 3600) × runner_watts / 1000
+co2_grams/month  = energy_kwh × grid_intensity_gco2_per_kwh
+co2_kg/year      = co2_grams/month × 12 / 1000
+```
 
-## Output expectations (product, not review bot)
+**Methodology:** [Eco-CI estimation model](https://green-coding.io/projects/eco-ci/)
+**Defaults:** 100W runner, 350 gCO₂/kWh global average
+**Override:** set `runner_region` in `eunice.yml` for your actual grid intensity
 
-A strong Eunice output should include:
-- prioritized debt findings
-- measured GitLab signals used
-- estimated assumptions used
-- dependency/propagation explanation (when available)
-- sprint paydown plan (ordered by impact and dependency)
-- action recommendations and generated artifacts (MR note/issue)
+All carbon values are labeled with their assumptions. Small numbers are fine — the value is the trend.
 
-## Notes
+---
 
-This repository is the catalog package. Full runtime implementations may live in a separate repo that includes custom MCP configuration, config files, and project-specific automation.
+## Example output
+
+```markdown
+## 🔍 Eunice Debt Triage: `auth_utils.py`
+
+**Annual Impact:** $4,935 (propagated) | **ROI:** 13.2x | **Confidence:** high (gitlab_only)
+
+### Measured Signals (from GitLab)
+| Signal | Value | Source |
+|--------|-------|--------|
+| Commits (30d) | 12 | list_commits |
+| Avg MR review | 14 min | MR timestamps |
+| Bug issues | 3 | gitlab_issue_search |
+| Failed pipelines (30d) | 2 | get_pipeline_errors |
+| Wasted runner time | 2,580s/mo | get_job_logs |
+
+### Cost Breakdown
+| Category | Calculation | Annual Cost |
+|----------|-------------|-------------|
+| Review overhead | 12 × 14min/60 × $75 × 12 | $1,890 |
+| Bug fixes | 3 × 3hrs × $75 | $675 |
+| CI failures | 2 × 1hr × $75 × 12 | $1,800 |
+| Propagation (2.35×) | $4,365 × 2.35 | — |
+| **Direct total** | | **$4,365** |
+| **Propagated total** | | **$4,935** |
+
+### CI Waste & Carbon
+- Wasted runner time: 43 min/month
+- Estimated energy: 0.072 kWh/month
+- Estimated CO₂: **0.30 kg/year**
+- *Eco-CI methodology | 100W runner, 350 gCO₂/kWh global average (override in eunice.yml)*
+
+### Assumptions (from eunice.yml)
+- dev_hourly_rate: $75 | avg_bug_fix_hours: 3 | runner_watts: 100
+
+### Propagation Graph
+graph TD
+  auth_utils.py["auth_utils.py $4,935/yr 🔴"] -->|imports| user_service.py
+  auth_utils.py -->|imports| session_manager.py
+  auth_utils.py -->|imports| api_gateway.py
+
+### Recommended Fix (6hrs, ROI: 13.2x)
+1. Refactor validate_user() lines 67-89
+2. Extract nested conditionals into named functions
+3. Add unit tests for 3 uncovered branches
+
+---
+📊 Priority: high | 🔁 Times flagged: 1 | 💡 Sprint plan in linked issue
+```
+
+---
+
+## Issue lifecycle memory
+
+Eunice tracks its own findings over time:
+
+- Before creating an issue: checks for existing `eunice-debt` issues on the same file
+- If an open issue exists: adds a note instead of creating a duplicate
+- If the same file is flagged 3+ times: escalates to `eunice-critical` and recommends leadership visibility
+- Monthly balance sheet tracks debt added vs paid down as a running ledger
+
+---
+
+## Setup
+
+### 1. Install from AI Catalog
+```
+GitLab project → Automate → AI Catalog → search "eunice" → enable
+```
+
+### 2. Add `eunice.yml` to your project root
+Copy and edit the config file:
+```yaml
+cost:
+  dev_hourly_rate: 75       # your team's average
+  ci_cost_per_minute: 0.005
+
+carbon:
+  runner_watts: 100
+  grid_intensity_gco2_per_kwh: 350  # find yours at ember-climate.org
+  runner_region: "us-east-1"
+
+sprint:
+  debt_budget_hours: 20     # hours your team will spend on debt per sprint
+
+thresholds:
+  create_issue_min_annual_cost: 3000
+  create_issue_min_confidence: medium
+  repeat_flag_escalation_count: 3
+```
+
+### 3. (Recommended) Add Nia for better dependency analysis
+```bash
+npx nia-wizard@latest --remote
+npx nia index gitlab.com/your-org/your-repo
+# Add NIA_API_KEY to GitLab CI/CD variables
+```
+
+### 4. Schedule flows
+```yaml
+# .gitlab-ci.yml
+eunice-weekly:
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "schedule"'  # schedule for every Monday
+  # trigger eunice-weekly-triage flow
+
+eunice-monthly:
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "schedule"'  # schedule for 1st of month
+  # trigger eunice-monthly-balance-sheet flow
+```
+
+---
+
+## Nia integration (recommended, optional)
+
+Without Nia, Eunice uses grep and file patterns for dependency discovery (`analysis_mode: gitlab_only`).
+With Nia, Eunice uses semantic code search for accurate dependency graphs (`analysis_mode: nia_enhanced`).
+
+The difference is visible in every output — confidence is higher, propagation edges are more accurate, and dead-code findings have fewer false positives.
+
+Eunice never pretends Nia is available when it isn't. `analysis_mode` is always honest.
+
+---
+
+## Configuration reference
+
+See [`eunice.yml`](eunice.yml) for the full config file with all options and documented defaults.
+
+---
+
+## FAQ
+
+**Q: Does Eunice work with self-hosted GitLab?**
+A: Yes — set `gitlab.url` in `eunice.yml`.
+
+**Q: What if my team doesn't track time in issues?**
+A: Eunice falls back to `avg_bug_fix_hours` from `eunice.yml` and labels those values as ESTIMATED.
+
+**Q: How accurate are the cost numbers?**
+A: Commit counts, MR durations, and pipeline failures are exact (from GitLab APIs). Effort estimates are from your `eunice.yml` config — the more you calibrate it, the more accurate the output.
+
+**Q: What if Eunice finds nothing worth fixing?**
+A: It says so. "Do nothing" is a first-class output. A tool that always finds problems isn't a prioritization tool.
+
+**Q: How does CO₂ calculation work?**
+A: Eco-CI methodology: runner duration × power draw → energy → grid carbon intensity → grams CO₂. All assumptions are labeled and overridable.
+
+---
+
+## Prize categories (GitLab AI Hackathon)
+
+- ✅ **GitLab + Anthropic** — built on Claude Sonnet 4.6 via GitLab Duo Agent Platform
+- ✅ **Green Agent** — CI waste → energy → CO₂ calculation using Eco-CI methodology
+
+---
+
+## License
+
+MIT — see [LICENSE](LICENSE)
+
+---
+
+## Built with
+
+- [GitLab Duo Agent Platform](https://docs.gitlab.com/user/duo_agent_platform/)
+- [Anthropic Claude Sonnet 4.6](https://www.anthropic.com/)
+- [Nia](https://trynia.ai/) — semantic codebase analysis (optional)
+- [Eco-CI](https://green-coding.io/projects/eco-ci/) — CI carbon estimation methodology
+- [Ember Climate](https://ember-climate.org/data/data-tools/carbon-intensity-tool/) — grid carbon intensity data
+
+---
+
+*Eunice: because "TODO: fix later" has a price tag.*

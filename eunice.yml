@@ -1,0 +1,112 @@
+# eunice.yml
+# Configuration for Eunice — Technical Debt Intelligence
+# Place this file in the root of the project where Eunice runs.
+# All cost and effort values are used by eunice-planner and eunice-graph.
+# Every assumption Eunice uses in its output traces back to this file.
+
+# ---------------------------------------------------------------------------
+# Cost assumptions
+# Used to calculate annual developer cost of technical debt.
+# ---------------------------------------------------------------------------
+cost:
+  # Average fully-loaded hourly rate for your engineering team (USD)
+  # Used in: review overhead, bug fix cost, refactor ROI calculations
+  dev_hourly_rate: 75
+
+  # Average cost per CI/CD runner minute (USD)
+  # GitLab SaaS default Linux runner: ~$0.005/min (check your billing)
+  # Self-hosted: estimate from infra cost / total runner minutes
+  ci_cost_per_minute: 0.005
+
+# ---------------------------------------------------------------------------
+# Carbon / emissions assumptions
+# Used by eunice-planner to calculate CI waste in CO₂ terms.
+# Methodology: Eco-CI estimation model (https://green-coding.io/projects/eco-ci/)
+# Formula: energy_kWh = (duration_seconds / 3600) * runner_watts / 1000
+#          co2_grams  = energy_kWh * grid_intensity_gco2_per_kwh
+# ---------------------------------------------------------------------------
+carbon:
+  # Power draw of your CI runner in watts
+  # Standard 2-vCPU medium runner ≈ 100W (Eco-CI default)
+  runner_watts: 100
+
+  # Grid carbon intensity in gCO₂/kWh
+  # Global average: 350 | US East: 400 | EU West: 200 | Sweden: 13
+  # Find your region: https://ember-climate.org/data/data-tools/carbon-intensity-tool/
+  # Override this with your runner's actual region for accurate results.
+  grid_intensity_gco2_per_kwh: 350
+
+  # Your runner region (informational — used in output labeling)
+  runner_region: "global-average"
+
+# ---------------------------------------------------------------------------
+# Effort assumptions
+# Used when GitLab issue time tracking is unavailable.
+# Eunice labels these as ESTIMATED in all outputs.
+# ---------------------------------------------------------------------------
+effort:
+  # Average hours to fix a bug (used when issues have no /spend tracking)
+  avg_bug_fix_hours: 3
+
+  # Average refactor hours per 100 lines of code changed
+  avg_refactor_hours_per_100_loc: 2
+
+  # Average hours lost per flaky test re-run (pipeline debug + re-trigger)
+  avg_flaky_test_debug_hours: 0.5
+
+# ---------------------------------------------------------------------------
+# Sprint / planning assumptions
+# Used by eunice-planner to size sprint recommendations.
+# ---------------------------------------------------------------------------
+sprint:
+  # Total hours your team is willing to spend on debt per sprint
+  # Eunice will not recommend more work than this budget.
+  debt_budget_hours: 20
+
+  # Sprint length in weeks (used to calculate annualized savings)
+  sprint_weeks: 2
+
+# ---------------------------------------------------------------------------
+# Thresholds
+# Controls when Eunice creates issues vs. just commenting.
+# ---------------------------------------------------------------------------
+thresholds:
+  # Minimum estimated annual cost (USD) to create a GitLab issue
+  create_issue_min_annual_cost: 3000
+
+  # Minimum ROI multiplier to create a GitLab issue
+  create_issue_min_roi: 5
+
+  # Minimum confidence level to create a GitLab issue
+  # Options: high | medium | low
+  create_issue_min_confidence: medium
+
+  # Number of times a file must be flagged before urgency escalates to "critical"
+  repeat_flag_escalation_count: 3
+
+# ---------------------------------------------------------------------------
+# Nia integration (optional)
+# Eunice works without Nia but produces higher-confidence results with it.
+# Set NIA_API_KEY as a GitLab CI/CD variable — do not hardcode it here.
+# ---------------------------------------------------------------------------
+nia:
+  enabled: true  # set to false to force gitlab_only mode even if Nia is available
+  index_url: ""  # optional: your Nia index URL if self-hosted
+
+# ---------------------------------------------------------------------------
+# GitLab config
+# ---------------------------------------------------------------------------
+gitlab:
+  # URL for self-hosted GitLab instances
+  # Leave empty to use gitlab.com
+  url: ""
+
+  # Label Eunice applies to issues it creates
+  # Create this label in your GitLab project before enabling
+  issue_label: "eunice-debt"
+
+  # Label Eunice uses to identify existing debt issues during lifecycle checks
+  debt_label: "technical-debt"
+
+  # Label for bugs (used to find bug issues in cost calculations)
+  bug_label: "bug"
