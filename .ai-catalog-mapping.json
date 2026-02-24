@@ -33,10 +33,10 @@
         }
       },
       "latest_sync": {
-        "git_tag": "v0.2.0",
-        "catalog_version": "1.0.0",
-        "synced_at": "2026-02-24T00:18:09.847Z",
-        "definition_hash": "5c516df071f2c12e"
+        "git_tag": "v0.2.1",
+        "catalog_version": "1.0.1",
+        "synced_at": "2026-02-24T00:27:21.351Z",
+        "definition_hash": "6f3ee9b3f16d603f"
       }
     },
     "agents/eunice-collector.yml": {
@@ -52,10 +52,10 @@
         }
       },
       "latest_sync": {
-        "git_tag": "v0.2.0",
-        "catalog_version": "1.0.0",
-        "synced_at": "2026-02-24T00:18:11.054Z",
-        "definition_hash": "4262b46825c5673a"
+        "git_tag": "v0.2.1",
+        "catalog_version": "1.0.1",
+        "synced_at": "2026-02-24T00:27:22.742Z",
+        "definition_hash": "cbff9043a82feaa3"
       }
     },
     "agents/eunice-graph.yml": {
@@ -71,10 +71,10 @@
         }
       },
       "latest_sync": {
-        "git_tag": "v0.2.0",
-        "catalog_version": "1.0.0",
-        "synced_at": "2026-02-24T00:18:12.417Z",
-        "definition_hash": "48539c120dcee5c7"
+        "git_tag": "v0.2.1",
+        "catalog_version": "1.0.1",
+        "synced_at": "2026-02-24T00:27:24.067Z",
+        "definition_hash": "ef7f6c5616c1587e"
       }
     },
     "agents/eunice-planner.yml": {
@@ -90,10 +90,10 @@
         }
       },
       "latest_sync": {
-        "git_tag": "v0.2.0",
-        "catalog_version": "1.0.0",
-        "synced_at": "2026-02-24T00:18:13.737Z",
-        "definition_hash": "3e5ec986e66abe1c"
+        "git_tag": "v0.2.1",
+        "catalog_version": "1.0.1",
+        "synced_at": "2026-02-24T00:27:25.214Z",
+        "definition_hash": "e7035564acf747df"
       }
     }
   },
@@ -130,10 +130,10 @@
         }
       },
       "latest_sync": {
-        "git_tag": "v0.2.0",
-        "catalog_version": "1.0.0",
-        "synced_at": "2026-02-24T00:18:17.143Z",
-        "definition_hash": "90342be778b53ee3"
+        "git_tag": "v0.2.1",
+        "catalog_version": "1.0.1",
+        "synced_at": "2026-02-24T00:27:26.160Z",
+        "definition_hash": "6ae76be7a8ccf7e0"
       }
     },
     "flows/eunice-mr-review.yml": {
@@ -168,10 +168,10 @@
         }
       },
       "latest_sync": {
-        "git_tag": "v0.2.0",
-        "catalog_version": "1.0.0",
-        "synced_at": "2026-02-24T00:18:20.784Z",
-        "definition_hash": "d6c95edfb70bb7ca"
+        "git_tag": "v0.2.1",
+        "catalog_version": "1.0.1",
+        "synced_at": "2026-02-24T00:27:27.118Z",
+        "definition_hash": "f831ba9cc82c1f87"
       }
     }
   }
