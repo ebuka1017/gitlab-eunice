@@ -2,6 +2,26 @@
 
 All notable changes to Eunice are documented in this file.
 
+## [0.2.4] - 2026-02-24
+### Changed
+- Updated changelog and GitLab Wiki to document the autofix capability, rollout guidance, and latest architecture/flows.
+
+## [0.2.3] - 2026-02-24
+### Added
+- `agents/eunice-fixer.yml` for safe, gated automated remediation (draft MR only, test-verified).
+- `flows/eunice-autofix.yml` to run triage -> plan -> fix -> verify -> draft MR.
+
+### Changed
+- Upgraded `flows/eunice.yml` and `flows/eunice-mr-review.yml` inline prompts to match standalone agent rigor.
+- Updated `flows/eunice-weekly-triage.yml` consistency around assumptions/default labeling.
+- Synced `agents/agent.yml.template` and `flows/flow.yml.template` to current Eunice architecture.
+- Refreshed `README.md` for autofix capability and product positioning (without hackathon/prize framing).
+
+## [0.2.2] - 2026-02-24
+### Added
+- `CHANGELOG.md` in the main catalog repo.
+- GitLab Wiki pages: `Home`, `Setup`, `Architecture`, and `Changelog`.
+
 ## [0.2.1] - 2026-02-24
 ### Added
 - Root `eunice.yml` runtime configuration template for cost, carbon, sprint, threshold, Nia, and GitLab settings.
