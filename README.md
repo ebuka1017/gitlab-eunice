@@ -232,6 +232,9 @@ GitLab project → Automate → AI Catalog → search "eunice" → enable
 
 Enable the **agent** (`eunice`) and any **flows** you want to use (`eunice-mr-review`, `eunice-weekly-triage`, `eunice-monthly-balance-sheet`, `eunice-autofix`).
 
+Important: GitLab pins enabled agents/flows to a specific version. After a new Eunice release, go to:
+`Automate → Agents` / `Automate → Flows` and click **Update** if a newer version is available.
+
 ### 2. Add `eunice.yml` to your project root
 Copy and edit the config file:
 ```yaml
@@ -270,6 +273,8 @@ Supported trigger patterns include:
 
 After triggering a flow, check:
 `Automate → Sessions`
+
+If Eunice suddenly behaves like a passive code-review bot (no calculations, no issue/MR actions, no autofix), first verify the project is using the latest pinned version of the `eunice` agent and relevant flows.
 
 ```yaml
 # .gitlab-ci.yml

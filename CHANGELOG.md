@@ -2,6 +2,12 @@
 
 All notable changes to Eunice are documented in this file.
 
+## [0.2.9] - 2026-02-24
+### Changed
+- Restored action-first behavior in the single `eunice` prompt with explicit execution policy (calculate, create GitLab artifacts, autofix when requested and safe).
+- Added mode inference guidance so Eunice does not degrade into passive code review when the user asks for action.
+- Added flow-trigger troubleshooting and pinned-version update guidance to README and Wiki setup docs.
+
 ## [0.2.8] - 2026-02-24
 ### Changed
 - Removed remaining hackathon-specific project references from documentation and wiki copy.
