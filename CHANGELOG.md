@@ -2,6 +2,11 @@
 
 All notable changes to Eunice are documented in this file.
 
+## [0.2.7] - 2026-02-24
+### Changed
+- Pruned stale deleted-agent entries from `.ai-catalog-mapping.json` so the mapping reflects the true single-agent catalog (`agents/eunice.yml` only).
+- Kept flow mappings intact and verified mapped paths exist in the repository.
+
 ## [0.2.6] - 2026-02-24
 ### Changed
 - Converted the AI Catalog to a true single-agent catalog (`agents/eunice.yml` as the public agent).
